@@ -67,29 +67,29 @@ export const extractMWBContent = (fileContent: string) => {
 };
 
 function generateSQL(tables: Element[]): string {
-  const dataTypeMap = {
-    VARCHAR: (length: string) => `VARCHAR(${length})`,
-    CHAR: (length: string) => `CHAR(${length})`,
-    INT: (length: string) => `INT(${length || "11"})`,
-    BIGINT: (length: string) => `BIGINT(${length || "20"})`,
-    TINYINT: (length: string) => `TINYINT(${length || "4"})`,
-    DECIMAL: (precision: string, scale: string) =>
-      `DECIMAL(${precision || "10"},${scale || "2"})`,
-    TEXT: () => "TEXT",
-    LONGTEXT: () => "LONGTEXT",
-    TIMESTAMP: () => "TIMESTAMP",
-    DATETIME: () => "DATETIME",
-    DATE: () => "DATE",
-    FLOAT: () => "FLOAT",
-    DOUBLE: () => "DOUBLE",
-    BOOLEAN: () => "BOOLEAN",
-    JSON: () => "JSON",
-  };
+  // const dataTypeMap = {
+  //   VARCHAR: (length: string) => `VARCHAR(${length})`,
+  //   CHAR: (length: string) => `CHAR(${length})`,
+  //   INT: (length: string) => `INT(${length || "11"})`,
+  //   BIGINT: (length: string) => `BIGINT(${length || "20"})`,
+  //   TINYINT: (length: string) => `TINYINT(${length || "4"})`,
+  //   DECIMAL: (precision: string, scale: string) =>
+  //     `DECIMAL(${precision || "10"},${scale || "2"})`,
+  //   TEXT: () => "TEXT",
+  //   LONGTEXT: () => "LONGTEXT",
+  //   TIMESTAMP: () => "TIMESTAMP",
+  //   DATETIME: () => "DATETIME",
+  //   DATE: () => "DATE",
+  //   FLOAT: () => "FLOAT",
+  //   DOUBLE: () => "DOUBLE",
+  //   BOOLEAN: () => "BOOLEAN",
+  //   JSON: () => "JSON",
+  // };
 
   return tables
     .map((table) => {
       // Get schema name and table name from the correct structure
-      const schemaName = "GrtObject"; // You can customize this
+      // const schemaName = "GrtObject"; // You can customize this
       // Get table name directly from the name value
       let tableName =
         table
@@ -124,9 +124,9 @@ function generateSQL(tables: Element[]): string {
         const defaultValue = col
           .querySelector('value[key="defaultValue"]')
           ?.textContent?.trim();
-        const comment = col
-          .querySelector('value[key="comment"]')
-          ?.textContent?.trim();
+        // const comment = col
+        //   .querySelector('value[key="comment"]')
+        //   ?.textContent?.trim();
 
         let columnDef = `\`${colName}\` `;
 
@@ -219,12 +219,12 @@ class ${className} extends Model
 }`;
 }
 function generateSingleTableMigration(table: Element): string {
-  let tableName =
+  const tableName =
     table
       .querySelector('value[struct-name="db.mysql.Table"] > value[key="name"]')
       ?.textContent?.trim() || "UNKNOWN_TABLE";
 
-  const className = `Create${pascalCase(tableName)}Table`;
+  // const className = `Create${pascalCase(tableName)}Table`;
 
   // Get columns for the migration
   const columns = Array.from(
@@ -343,59 +343,59 @@ ${schemaLines.join("\n")}
 };`;
 }
 
-function generateMigration(tables: Element[]): string {
-  const sqlStatements = generateSQL(tables);
-  return `<?php
+// function generateMigration(tables: Element[]): string {
+//   const sqlStatements = generateSQL(tables);
+//   return `<?php
 
-use Illuminate\\Database\\Migrations\\Migration;
-use Illuminate\\Database\\Schema\\Blueprint;
-use Illuminate\\Support\\Facades\\Schema;
+// use Illuminate\\Database\\Migrations\\Migration;
+// use Illuminate\\Database\\Schema\\Blueprint;
+// use Illuminate\\Support\\Facades\\Schema;
 
-class Create${Date.now()}Tables extends Migration
-{
-    /**
-     * Run the migrations.
-     *
-     * @return void
-     */
-    public function up()
-    {
-        // Generated SQL statements
-        // ${sqlStatements.replace(/\n/g, "\n        // ")}
+// class Create${Date.now()}Tables extends Migration
+// {
+//     /**
+//      * Run the migrations.
+//      *
+//      * @return void
+//      */
+//     public function up()
+//     {
+//         // Generated SQL statements
+//         // ${sqlStatements.replace(/\n/g, "\n        // ")}
         
-        ${tables
-          .map((table) => {
-            const tableName =
-              table.querySelector('value[key="name"]')?.textContent?.trim() ||
-              "unknown_table";
-            return `Schema::create('${tableName}', function (Blueprint $table) {
-            $table->id();
-            // Add your columns here
-            $table->timestamps();
-        });`;
-          })
-          .join("\n\n        ")}
-    }
+//         ${tables
+//           .map((table) => {
+//             const tableName =
+//               table.querySelector('value[key="name"]')?.textContent?.trim() ||
+//               "unknown_table";
+//             return `Schema::create('${tableName}', function (Blueprint $table) {
+//             $table->id();
+//             // Add your columns here
+//             $table->timestamps();
+//         });`;
+//           })
+//           .join("\n\n        ")}
+//     }
 
-    /**
-     * Reverse the migrations.
-     *
-     * @return void
-     */
-    public function down()
-    {
-        ${tables
-          .map((table) => {
-            const tableName =
-              table.querySelector('value[key="name"]')?.textContent?.trim() ||
-              "unknown_table";
-            return `Schema::dropIfExists('${tableName}');`;
-          })
-          .reverse()
-          .join("\n        ")}
-    }
-}`;
-}
+//     /**
+//      * Reverse the migrations.
+//      *
+//      * @return void
+//      */
+//     public function down()
+//     {
+//         ${tables
+//           .map((table) => {
+//             const tableName =
+//               table.querySelector('value[key="name"]')?.textContent?.trim() ||
+//               "unknown_table";
+//             return `Schema::dropIfExists('${tableName}');`;
+//           })
+//           .reverse()
+//           .join("\n        ")}
+//     }
+// }`;
+// }
 
 function pascalCase(str: string): string {
   return str.replace(/(^|_)(\w)/g, (_, __, letter) => letter.toUpperCase());
