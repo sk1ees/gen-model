@@ -36,18 +36,24 @@ export default function ConvertPage() {
     model: true,
     migration: true,
   });
-
-  // Update the handleDrop function to use the new migrations array
+  // Define a custom type for the non-drag event case
+  type FileInputEvent = {
+    dataTransfer: {
+      files: FileList;
+    };
+  };
+  // Update the handleDrop function signature
   const handleDrop = async (
-    e: React.DragEvent<HTMLDivElement> | { dataTransfer: { files: FileList } }
+    e: React.DragEvent<HTMLDivElement> | FileInputEvent
   ) => {
     // For drag and drop events
     if ("preventDefault" in e) {
       e.preventDefault();
       setIsDragging(false);
     }
-    const files =
-      "dataTransfer" in e ? e.dataTransfer.files : e.dataTransfer.files;
+    // Now TypeScript knows both branches have dataTransfer
+    const files = e.dataTransfer.files;
+
     const mwbFiles = Array.from(files).filter((file) =>
       file.name.endsWith(".mwb")
     );
@@ -207,8 +213,8 @@ export default function ConvertPage() {
                 onChange={(e) => {
                   if (e.target.files) {
                     handleDrop({
-                      dataTransfer: { files: e.target.files as FileList },
-                    });
+                      dataTransfer: { files: e.target.files },
+                    } as FileInputEvent);
                   }
                 }}
               />
