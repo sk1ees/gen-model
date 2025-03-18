@@ -91,7 +91,7 @@ function generateSQL(tables: Element[]): string {
       // Get schema name and table name from the correct structure
       // const schemaName = "GrtObject"; // You can customize this
       // Get table name directly from the name value
-      const tableName =
+      let tableName =
         table
           .querySelector(
             'value[struct-name="db.mysql.Table"] > value[key="name"]'
@@ -161,7 +161,7 @@ function generateSQL(tables: Element[]): string {
     .join("\n\n");
 }
 function generateLaravelModel(table: Element): string {
-  let tableName =
+  const tableName =
     table
       .querySelector('value[struct-name="db.mysql.Table"] > value[key="name"]')
       ?.textContent?.trim() || "UNKNOWN_TABLE";
