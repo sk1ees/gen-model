@@ -207,8 +207,8 @@ export default function ConvertPage() {
                 onChange={(e) => {
                   if (e.target.files) {
                     handleDrop({
-                      dataTransfer: { files: e.target.files },
-                    } as any);
+                      dataTransfer: { files: e.target.files as FileList },
+                    });
                   }
                 }}
               />

@@ -31,7 +31,7 @@ export const extractMWBContent = (fileContent: string) => {
 
   // Generate Laravel models - one per table
   const laravelModels = tables.map((table) => {
-    let tableName =
+    const tableName =
       table
         .querySelector(
           'value[struct-name="db.mysql.Table"] > value[key="name"]'
@@ -46,7 +46,7 @@ export const extractMWBContent = (fileContent: string) => {
 
   // Generate individual migration files for each table
   const migrations = tables.map((table) => {
-    let tableName =
+    const tableName =
       table
         .querySelector(
           'value[struct-name="db.mysql.Table"] > value[key="name"]'
@@ -91,7 +91,7 @@ function generateSQL(tables: Element[]): string {
       // Get schema name and table name from the correct structure
       // const schemaName = "GrtObject"; // You can customize this
       // Get table name directly from the name value
-      let tableName =
+      const tableName =
         table
           .querySelector(
             'value[struct-name="db.mysql.Table"] > value[key="name"]'
@@ -362,7 +362,7 @@ ${schemaLines.join("\n")}
 //     {
 //         // Generated SQL statements
 //         // ${sqlStatements.replace(/\n/g, "\n        // ")}
-        
+
 //         ${tables
 //           .map((table) => {
 //             const tableName =
