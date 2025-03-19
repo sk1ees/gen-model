@@ -13,6 +13,7 @@ import {
   ChevronDownIcon,
   ChevronLeftIcon,
   XIcon,
+  CheckIcon,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -27,8 +28,12 @@ interface FileContent {
 
 export default function ConvertPage() {
   const [files, setFiles] = useState<FileContent[]>([]);
+  // Add a new state to track sidebar collapse
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [selectedFile, setSelectedFile] = useState<FileContent | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [expandedSections, setExpandedSections] = useState<
     Record<string, boolean>
   >({
@@ -63,6 +68,11 @@ export default function ConvertPage() {
       return;
     }
 
+    // Set processing to true when starting
+    setIsProcessing(true);
+    // Record the start time
+    const startTime = Date.now();
+
     const processedFiles: FileContent[] = [];
     for (const file of mwbFiles) {
       try {
@@ -90,6 +100,17 @@ export default function ConvertPage() {
         toast.error(`Failed to process ${file.name}`);
       }
     }
+    // Calculate how much time has passed
+    const elapsedTime = Date.now() - startTime;
+    // Ensure the processing animation shows for at least 1.5 seconds
+    const minProcessingTime = 1500;
+
+    if (elapsedTime < minProcessingTime) {
+      // Wait for the remaining time to complete the minimum processing time
+      await new Promise((resolve) =>
+        setTimeout(resolve, minProcessingTime - elapsedTime)
+      );
+    }
 
     setFiles((prev) => {
       const newFiles = [...prev, ...processedFiles];
@@ -99,14 +120,20 @@ export default function ConvertPage() {
       }
       return newFiles;
     });
-
+    setIsProcessing(false);
     toast.success(`Processed ${mwbFiles.length} files successfully`);
   };
 
   const copyToClipboard = async (content: string) => {
     try {
       await navigator.clipboard.writeText(content);
+      setCopied(true);
       toast.success("Content copied to clipboard");
+
+      // Reset the copied state after 2 seconds
+      setTimeout(() => {
+        setCopied(false);
+      }, 2000);
     } catch (error) {
       console.error("Failed to copy:", error);
       toast.error("Failed to copy to clipboard");
@@ -147,7 +174,17 @@ export default function ConvertPage() {
   const filterFilesByType = (type: FileContent["type"]) => {
     return files.filter((file) => file.type === type);
   };
+  const handleCollapsedIconClick = (sectionType: string) => {
+    // Expand the sidebar
+    setSidebarCollapsed(false);
 
+    // Update expandedSections to only open the clicked section
+    setExpandedSections({
+      sql: sectionType === "sql",
+      model: sectionType === "model",
+      migration: sectionType === "migration",
+    });
+  };
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
       <Toaster theme="dark" position="top-right" />
@@ -156,7 +193,7 @@ export default function ConvertPage() {
       <header className="border-b border-zinc-800 px-4 py-3 flex items-center justify-between sticky top-0 z-10 bg-zinc-950/90 backdrop-blur-sm">
         <div className="flex items-center">
           <DatabaseIcon className="h-5 w-5 mr-2 text-blue-400" />
-          <h1 className="text-xl font-semibold text-white">QRYModel</h1>
+          <h1 className="text-xl font-semibold text-white">Modelizer</h1>
         </div>
 
         {files.length > 0 && (
@@ -164,7 +201,7 @@ export default function ConvertPage() {
             <Button
               variant="outline"
               size="sm"
-              className="text-xs"
+              className="text-xs text-zinc-900 cursor-pointer"
               onClick={() => {
                 setFiles([]);
                 setSelectedFile(null);
@@ -175,7 +212,7 @@ export default function ConvertPage() {
             <Button
               variant="outline"
               size="sm"
-              className="text-xs"
+              className="text-xs text-zinc-900 cursor-pointer"
               onClick={downloadAllFiles}
             >
               Download All
@@ -186,7 +223,6 @@ export default function ConvertPage() {
 
       <div className="flex flex-col h-[calc(100vh-57px)]">
         {files.length === 0 ? (
-          /* File drop area - shown when no files are processed */
           <div className="flex-1 flex items-center justify-center p-4">
             <div
               className={cn(
@@ -220,20 +256,35 @@ export default function ConvertPage() {
               />
               <div className="space-y-4">
                 <div className="bg-blue-500/10 rounded-full p-4 w-20 h-20 mx-auto flex items-center justify-center">
-                  <DatabaseIcon className="w-10 h-10 text-blue-400" />
+                  {isProcessing ? (
+                    <div className="animate-spin w-10 h-10 border-4 border-blue-400 border-t-transparent rounded-full" />
+                  ) : (
+                    <DatabaseIcon className="w-10 h-10 text-blue-400" />
+                  )}
                 </div>
                 <div>
                   <h3 className="text-xl font-medium mb-2">
-                    Drop your MySQL Workbench files
+                    {isProcessing
+                      ? "Processing files..."
+                      : "Drop your MySQL Workbench files"}
                   </h3>
                   <p className="text-zinc-400">
-                    Drop .mwb files here to convert them to Laravel models,
-                    migrations, and SQL
+                    {isProcessing
+                      ? "Please wait while we convert your files"
+                      : "Drop .mwb files here to convert them to Laravel models, migrations, and SQL"}
                   </p>
                 </div>
-                <Button className="mt-4" variant="outline">
-                  Select .mwb files
-                </Button>
+                {!isProcessing && (
+                  <Button
+                    className="mt-4 text-zinc-900 cursor-pointer"
+                    variant="outline"
+                  >
+                    Select .mwb files
+                  </Button>
+                )}
+                <p className="text-xs text-zinc-500 pt-4 mt-4 border-t border-zinc-800">
+                  Powered by a lazy coder
+                </p>
               </div>
             </div>
           </div>
@@ -241,128 +292,177 @@ export default function ConvertPage() {
           /* VS Code-like editor - shown when files are processed */
           <div className="flex-1 flex overflow-hidden">
             {/* File Explorer Sidebar */}
-            <div className="w-64 border-r border-zinc-800 flex flex-col">
+            <div
+              className={cn(
+                "border-r border-zinc-800 flex flex-col transition-all duration-200",
+                sidebarCollapsed ? "w-12" : "w-64"
+              )}
+            >
               <div className="p-3 border-b border-zinc-800 bg-zinc-900/50 flex justify-between items-center">
-                <h3 className="text-xs font-medium uppercase text-zinc-400">
-                  Explorer
-                </h3>
+                {!sidebarCollapsed && (
+                  <h3 className="text-xs font-medium uppercase text-zinc-400">
+                    Explorer
+                  </h3>
+                )}
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6"
-                  title="Collapse sidebar"
+                  className={cn("h-6 w-6", sidebarCollapsed && "mx-auto")}
+                  title={
+                    sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
+                  }
+                  onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
                 >
-                  <ChevronLeftIcon className="h-4 w-4" />
+                  <ChevronLeftIcon
+                    className={cn(
+                      "h-4 w-4 transition-transform",
+                      sidebarCollapsed && "transform rotate-180"
+                    )}
+                  />
                 </Button>
               </div>
 
               <ScrollArea className="flex-1 h-full">
-                <div className="p-1">
-                  {/* File type sections with collapsible folders */}
-                  {[
-                    {
-                      type: "sql",
-                      label: "SQL Files",
-                      icon: (
-                        <DatabaseIcon className="h-4 w-4 mr-2 text-blue-400" />
-                      ),
-                    },
-                    {
-                      type: "model",
-                      label: "Model Files",
-                      icon: (
-                        <CodeIcon className="h-4 w-4 mr-2 text-green-400" />
-                      ),
-                    },
-                    {
-                      type: "migration",
-                      label: "Migration Files",
-                      icon: (
-                        <FileIcon className="h-4 w-4 mr-2 text-yellow-400" />
-                      ),
-                    },
-                  ].map((section) => (
-                    <div key={section.type} className="mb-2">
-                      <div
-                        className="flex items-center text-xs text-zinc-400 py-1.5 px-2 hover:bg-zinc-800/50 rounded cursor-pointer"
-                        onClick={() => toggleSection(section.type)}
-                      >
-                        <ChevronDownIcon
-                          className={cn(
-                            "h-3.5 w-3.5 mr-1 transition-transform",
-                            !expandedSections[section.type] &&
-                              "transform rotate-[-90deg]"
-                          )}
-                        />
-                        <FolderIcon className="h-4 w-4 mr-1.5" />
-                        <span>{section.label}</span>
-                        <span className="ml-auto text-zinc-500 text-xs">
-                          {
-                            filterFilesByType(
-                              section.type as FileContent["type"]
-                            ).length
-                          }
-                        </span>
-                      </div>
-
-                      {expandedSections[section.type] && (
-                        <div className="ml-4">
-                          {filterFilesByType(
-                            section.type as FileContent["type"]
-                          ).map((file, index) => (
-                            <div
-                              key={`${section.type}-${index}`}
-                              className={cn(
-                                "flex items-center py-1 px-2 text-xs rounded cursor-pointer group",
-                                selectedFile?.name === file.name
-                                  ? "bg-blue-600/20 text-blue-100"
-                                  : "text-zinc-300 hover:bg-zinc-800/50"
-                              )}
-                              onClick={() => setSelectedFile(file)}
-                            >
-                              {section.icon}
-                              <span className="truncate">{file.name}</span>
-
-                              {/* Show actions on hover */}
-                              <div
-                                className={cn(
-                                  "ml-auto opacity-0 group-hover:opacity-100 transition-opacity",
-                                  selectedFile?.name === file.name &&
-                                    "opacity-100"
-                                )}
-                              >
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-5 w-5"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    copyToClipboard(file.content);
-                                  }}
-                                  title="Copy to clipboard"
-                                >
-                                  <CopyIcon className="h-3 w-3" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-5 w-5"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    downloadFile(file);
-                                  }}
-                                  title="Download file"
-                                >
-                                  <DownloadIcon className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            </div>
-                          ))}
+                {!sidebarCollapsed ? (
+                  <div className="p-1">
+                    {/* File type sections with collapsible folders */}
+                    {[
+                      {
+                        type: "sql",
+                        label: "SQL Files",
+                        icon: (
+                          <DatabaseIcon className="h-4 w-4 mr-2 text-blue-400" />
+                        ),
+                      },
+                      {
+                        type: "model",
+                        label: "Model Files",
+                        icon: (
+                          <CodeIcon className="h-4 w-4 mr-2 text-green-400" />
+                        ),
+                      },
+                      {
+                        type: "migration",
+                        label: "Migration Files",
+                        icon: (
+                          <FileIcon className="h-4 w-4 mr-2 text-yellow-400" />
+                        ),
+                      },
+                    ].map((section) => (
+                      <div key={section.type} className="mb-2">
+                        <div
+                          className="flex items-center text-xs text-zinc-400 py-1.5 px-2 hover:bg-zinc-800/50 rounded cursor-pointer"
+                          onClick={() => toggleSection(section.type)}
+                        >
+                          <ChevronDownIcon
+                            className={cn(
+                              "h-3.5 w-3.5 mr-1 transition-transform",
+                              !expandedSections[section.type] &&
+                                "transform rotate-[-90deg]"
+                            )}
+                          />
+                          <FolderIcon className="h-4 w-4 mr-1.5" />
+                          <span>{section.label}</span>
+                          <span className="ml-auto text-zinc-500 text-xs">
+                            {
+                              filterFilesByType(
+                                section.type as FileContent["type"]
+                              ).length
+                            }
+                          </span>
                         </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+
+                        {expandedSections[section.type] && (
+                          <div className="ml-4">
+                            {filterFilesByType(
+                              section.type as FileContent["type"]
+                            ).map((file, index) => (
+                              <div
+                                key={`${section.type}-${index}`}
+                                className={cn(
+                                  "flex items-center py-1 px-2 text-xs rounded cursor-pointer group",
+                                  selectedFile?.name === file.name
+                                    ? "bg-blue-600/20 text-blue-100"
+                                    : "text-zinc-300 hover:bg-zinc-800/50"
+                                )}
+                                onClick={() => setSelectedFile(file)}
+                              >
+                                {section.icon}
+                                <span className="truncate">{file.name}</span>
+
+                                {/* Show actions on hover */}
+                                <div
+                                  className={cn(
+                                    "ml-auto opacity-0 group-hover:opacity-100 transition-opacity",
+                                    selectedFile?.name === file.name &&
+                                      "opacity-100"
+                                  )}
+                                >
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-5 w-5"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      copyToClipboard(file.content);
+                                    }}
+                                    title="Copy to clipboard"
+                                  >
+                                    <CopyIcon className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-5 w-5"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      downloadFile(file);
+                                    }}
+                                    title="Download file"
+                                  >
+                                    <DownloadIcon className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  // Collapsed sidebar view - just show icons
+                  <div className="py-2">
+                    {[
+                      {
+                        type: "sql",
+                        icon: (
+                          <DatabaseIcon className="h-5 w-5 text-blue-400" />
+                        ),
+                        title: "SQL Files",
+                      },
+                      {
+                        type: "model",
+                        icon: <CodeIcon className="h-5 w-5 text-green-400" />,
+                        title: "Model Files",
+                      },
+                      {
+                        type: "migration",
+                        icon: <FileIcon className="h-5 w-5 text-yellow-400" />,
+                        title: "Migration Files",
+                      },
+                    ].map((section) => (
+                      <div
+                        key={section.type}
+                        className="flex justify-center py-2 hover:bg-zinc-800/50 cursor-pointer"
+                        title={section.title}
+                        onClick={() => handleCollapsedIconClick(section.type)}
+                      >
+                        {section.icon}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </ScrollArea>
             </div>
 
@@ -413,15 +513,25 @@ export default function ConvertPage() {
                     <div className="absolute bottom-4 right-4 flex space-x-2">
                       <Button
                         size="sm"
-                        className="shadow-lg"
+                        className="shadow-lg cursor-pointer"
                         onClick={() => copyToClipboard(selectedFile.content)}
+                        disabled={copied}
                       >
-                        <CopyIcon className="h-4 w-4 mr-2" />
-                        Copy
+                        {copied ? (
+                          <>
+                            <CheckIcon className="h-4 w-4 mr-2" />
+                            Copied
+                          </>
+                        ) : (
+                          <>
+                            <CopyIcon className="h-4 w-4 mr-2" />
+                            Copy
+                          </>
+                        )}
                       </Button>
                       <Button
                         size="sm"
-                        className="shadow-lg"
+                        className="shadow-lg cursor-pointer"
                         onClick={() => downloadFile(selectedFile)}
                       >
                         <DownloadIcon className="h-4 w-4 mr-2" />
